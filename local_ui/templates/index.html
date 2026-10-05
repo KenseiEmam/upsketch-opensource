@@ -20,8 +20,8 @@
       --success:   #4caf7d;
       --warn:      #e0a020;
       --error:     #e05050;
-      --checker1:  #404044;
-      --checker2:  #2c2c30;
+      --checker1:  #dfdfe7;
+      --checker2:  #f3f3fa;
       --radius:    10px;
       --transition: 180ms ease;
     }
@@ -429,8 +429,8 @@
         </div>
 
         <div class="checkbox-row">
-          <input type="checkbox" id="no-perspective" />
-          <label for="no-perspective">Skip perspective correction</label>
+          <input type="checkbox" checked id="no-perspective" />
+          <label for="no-perspective">Skip perspective correction - Use this for images with minimal perspective distortion.</label>
         </div>
 
       </div>
@@ -499,7 +499,19 @@
            aria-label="Before and after comparison slider">
         <div class="split-sizer"></div>
         <img id="img-before" alt="Original photograph" />
-        <img id="img-after"  alt="Extracted sketch with transparency" />
+        <div
+        class="absolute inset-0"
+        :style="{ clipPath: `inset(0 ${100 - splitPct}% 0 0)` }"
+      >
+        <div class="checker-bg absolute inset-0" />
+        <img
+          id="img-after"
+          alt="Extracted sketch"
+          class="absolute inset-0 w-full h-full object-contain"
+          draggable="false"
+        />
+      </div>
+
         <div id="split-divider"></div>
         <div id="split-handle">⇔</div>
       </div>
@@ -676,7 +688,8 @@ function showPreview(rd, jobData) {
 
 function setSplitPos(pct) {
   pct = Math.max(2, Math.min(98, pct));
-  imgAfter.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  imgBefore.style.clipPath = `inset(0 ${100-pct}% 0 0)`;
+  imgAfter.style.clipPath = `inset(0 0 0 ${pct}%)`;
   splitDiv.style.left    = pct + '%';
   splitHandle.style.left = pct + '%';
 }
