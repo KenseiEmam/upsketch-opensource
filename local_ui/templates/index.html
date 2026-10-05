@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SketchLift — Local Dev UI</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f11;
+      --surface:   #1a1a1e;
+      --surface2:  #242428;
+      --border:    #2e2e34;
+      --accent:    #7c6ff7;
+      --accent2:   #5b52d4;
+      --text:      #e8e8ec;
+      --muted:     #8888a0;
+      --success:   #4caf7d;
+      --warn:      #e0a020;
+      --error:     #e05050;
+      --checker1:  #404044;
+      --checker2:  #2c2c30;
+      --radius:    10px;
+      --transition: 180ms ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    header {
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .logo span { color: var(--accent); }
+    .badge {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* Drop zone */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      user-select: none;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(124,111,247,0.06);
+    }
+    #drop-zone .drop-icon { font-size: 32px; margin-bottom: 8px; }
+    #drop-zone .drop-main { font-size: 14px; font-weight: 500; }
+    #drop-zone .drop-sub  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    #file-input { display: none; }
+
+    /* Controls */
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .control-group label {
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .control-group label span { color: var(--accent); font-weight: 600; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    select:focus { outline: 2px solid var(--accent); }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .checkbox-row input { accent-color: var(--accent); cursor: pointer; }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), opacity var(--transition);
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); }
+
+    /* Status */
+    #status-box {
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      display: none;
+    }
+    #status-box.info    { background: rgba(124,111,247,0.12); border: 1px solid rgba(124,111,247,0.3); }
+    #status-box.success { background: rgba(76,175,125,0.12);  border: 1px solid rgba(76,175,125,0.3); }
+    #status-box.error   { background: rgba(224,80,80,0.12);   border: 1px solid rgba(224,80,80,0.3); color: #ff8080; }
+
+    /* Timings */
+    #timings-box { display: none; }
+    .timing-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 2px 0;
+    }
+    .timing-row .t-name { color: var(--text); }
+    .timing-total {
+      font-weight: 600;
+      color: var(--text);
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 4px;
+    }
+
+    /* Download buttons */
+    #downloads { display: none; gap: 8px; flex-direction: column; }
+    .dl-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+    .dl-btn:hover { border-color: var(--accent); }
+    .dl-badge {
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 36px;
+      text-align: center;
+    }
+
+    /* ── Preview area ────────────────────────────────────────────────── */
+    #preview-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      gap: 16px;
+      min-height: 400px;
+      position: relative;
+    }
+
+    #empty-state {
+      text-align: center;
+      color: var(--muted);
+    }
+    #empty-state .empty-icon { font-size: 56px; margin-bottom: 12px; }
+    #empty-state p { font-size: 14px; line-height: 1.6; }
+
+    /* Spinner */
+    #spinner {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .spinner-ring {
+      width: 52px; height: 52px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #spinner-label { font-size: 14px; color: var(--muted); }
+
+    /* Split preview */
+    #split-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .preview-label-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    /* The actual split-view widget */
+    .split-view {
+      position: relative;
+      width: 100%;
+      max-height: 600px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      user-select: none;
+      cursor: ew-resize;
+    }
+
+    /* Checkerboard base (shows through transparent PNG) */
+    .split-view::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(45deg, var(--checker1) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--checker1) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--checker1) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--checker1) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      background-color: var(--checker2);
+      z-index: 0;
+    }
+
+    #img-before, #img-after {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+    }
+    #img-before { z-index: 1; }
+    #img-after  { z-index: 2; clip-path: inset(0 50% 0 0); }
+
+    /* Placeholder for aspect-ratio */
+    .split-sizer { width: 100%; padding-top: 75%; }
+
+    /* Divider line */
+    #split-divider {
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 3px;
+      background: #fff;
+      z-index: 3;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    #split-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px; height: 36px;
+      background: #fff;
+      border-radius: 50%;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      pointer-events: none;
+    }
+
+    /* Metadata row */
+    #meta-row {
+      display: none;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    #meta-row span { display: flex; gap: 5px; }
+    #meta-row strong { color: var(--text); }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Sketch<span>Lift</span></div>
+  <div class="badge">Local Dev UI</div>
+</header>
+
+<main>
+  <!-- ── Sidebar ───────────────────────────────────────────────────── -->
+  <aside>
+
+    <!-- Drop zone -->
+    <div>
+      <div class="section-label">Input</div>
+      <div id="drop-zone" role="button" tabindex="0"
+           aria-label="Drop a JPEG or PNG image here, or click to browse">
+        <div class="drop-icon">🖼️</div>
+        <div class="drop-main">Drop image here</div>
+        <div class="drop-sub">JPEG or PNG · max 50 MB</div>
+      </div>
+      <input type="file" id="file-input" accept=".jpg,.jpeg,.png" aria-hidden="true" />
+    </div>
+
+    <!-- Pipeline controls -->
+    <div>
+      <div class="section-label">Pipeline</div>
+
+      <div style="display:flex; flex-direction:column; gap:14px;">
+
+        <div class="control-group">
+          <label for="sensitivity">
+            Sensitivity
+            <span id="sensitivity-val">0.85</span>
+          </label>
+          <input type="range" id="sensitivity" min="0.50" max="1.00" step="0.01" value="0.85"
+                 aria-valuemin="0.50" aria-valuemax="1.00" aria-valuenow="0.85" />
+          <small style="color:var(--muted);font-size:11px;">Higher → more strokes kept</small>
+        </div>
+
+        <div class="control-group">
+          <label for="kernel">
+            Illumination kernel
+            <span id="kernel-val">80 px</span>
+          </label>
+          <input type="range" id="kernel" min="20" max="200" step="10" value="80" />
+          <small style="color:var(--muted);font-size:11px;">Increase for large shaded fills</small>
+        </div>
+
+        <div class="control-group">
+          <label for="illum-method">Illumination method</label>
+          <select id="illum-method">
+            <option value="morphological" selected>Morphological (default)</option>
+            <option value="gaussian">Gaussian blur</option>
+            <option value="clahe">CLAHE</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="alpha-method">Alpha extraction</label>
+          <select id="alpha-method">
+            <option value="soft_threshold" selected>Soft threshold (default)</option>
+            <option value="bilateral">Bilateral filter</option>
+            <option value="dog">Difference of Gaussians</option>
+            <option value="clahe_inverted">CLAHE + invert</option>
+          </select>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="no-perspective" />
+          <label for="no-perspective">Skip perspective correction</label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Process button -->
+    <button class="btn btn-primary" id="process-btn" disabled>
+      Process image
+    </button>
+
+    <!-- Status -->
+    <div id="status-box" role="status" aria-live="polite"></div>
+
+    <!-- Timings -->
+    <div id="timings-box">
+      <div class="section-label">Stage timings</div>
+      <div id="timings-list"></div>
+    </div>
+
+    <!-- Downloads -->
+    <div id="downloads">
+      <div class="section-label">Download</div>
+      <a class="dl-btn" id="dl-png" href="#" download>
+        <span class="dl-badge">PNG</span>
+        Transparent · RGBA
+      </a>
+      <a class="dl-btn" id="dl-psd" href="#" download>
+        <span class="dl-badge">PSD</span>
+        Photoshop layers
+      </a>
+      <a class="dl-btn" id="dl-ora" href="#" download>
+        <span class="dl-badge">ORA</span>
+        GIMP · Krita
+      </a>
+      <button class="btn btn-ghost" id="reset-btn" style="margin-top:6px;">
+        Process another image
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ── Preview area ──────────────────────────────────────────────── -->
+  <section id="preview-area" aria-label="Image preview">
+
+    <!-- Empty state -->
+    <div id="empty-state">
+      <div class="empty-icon">✏️</div>
+      <p>Drop a pencil sketch to get started.<br/>
+         The extracted transparent artwork will appear here.</p>
+    </div>
+
+    <!-- Spinner -->
+    <div id="spinner" role="status" aria-label="Processing">
+      <div class="spinner-ring"></div>
+      <div id="spinner-label">Processing…</div>
+    </div>
+
+    <!-- Split preview -->
+    <div id="split-container">
+      <div class="preview-label-row">
+        <span>← Original</span>
+        <span>Extracted →</span>
+      </div>
+
+      <div class="split-view" id="split-view" role="img"
+           aria-label="Before and after comparison slider">
+        <div class="split-sizer"></div>
+        <img id="img-before" alt="Original photograph" />
+        <img id="img-after"  alt="Extracted sketch with transparency" />
+        <div id="split-divider"></div>
+        <div id="split-handle">⇔</div>
+      </div>
+
+      <div id="meta-row">
+        <span><strong id="meta-size">—</strong> pixels</span>
+        <span>DPI <strong id="meta-dpi">—</strong></span>
+        <span>Perspective <strong id="meta-persp">—</strong></span>
+        <span>Total <strong id="meta-time">—</strong></span>
+      </div>
+
+    </div>
+
+  </section>
+</main>
+
+<script>
+/* ── State ────────────────────────────────────────────────────────────── */
+let currentJobId  = null;
+let selectedFile  = null;
+let splitDragging = false;
+
+/* ── DOM refs ─────────────────────────────────────────────────────────── */
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-input');
+const processBtn   = document.getElementById('process-btn');
+const statusBox    = document.getElementById('status-box');
+const timingsBox   = document.getElementById('timings-box');
+const timingsList  = document.getElementById('timings-list');
+const downloads    = document.getElementById('downloads');
+const resetBtn     = document.getElementById('reset-btn');
+const emptyState   = document.getElementById('empty-state');
+const spinner      = document.getElementById('spinner');
+const spinnerLabel = document.getElementById('spinner-label');
+const splitCont    = document.getElementById('split-container');
+const splitView    = document.getElementById('split-view');
+const imgBefore    = document.getElementById('img-before');
+const imgAfter     = document.getElementById('img-after');
+const splitDiv     = document.getElementById('split-divider');
+const splitHandle  = document.getElementById('split-handle');
+const metaRow      = document.getElementById('meta-row');
+const senSlider    = document.getElementById('sensitivity');
+const senVal       = document.getElementById('sensitivity-val');
+const kernSlider   = document.getElementById('kernel');
+const kernVal      = document.getElementById('kernel-val');
+
+/* ── Slider live labels ───────────────────────────────────────────────── */
+senSlider.addEventListener('input',  () => senVal.textContent  = senSlider.value);
+kernSlider.addEventListener('input', () => kernVal.textContent = kernSlider.value + ' px');
+
+/* ── Drop zone ────────────────────────────────────────────────────────── */
+dropZone.addEventListener('click',    () => fileInput.click());
+dropZone.addEventListener('keydown',  e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length) handleFile(files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['jpg','jpeg','png'].includes(ext)) {
+    showStatus('Unsupported file type. Use JPEG or PNG.', 'error');
+    return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    showStatus('File too large (max 50 MB).', 'error');
+    return;
+  }
+  selectedFile = file;
+  processBtn.disabled = false;
+  dropZone.querySelector('.drop-main').textContent = file.name;
+  dropZone.querySelector('.drop-sub').textContent  =
+    (file.size / 1024 / 1024).toFixed(1) + ' MB · click to change';
+  hideStatus();
+}
+
+/* ── Process ──────────────────────────────────────────────────────────── */
+processBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  setPhase('processing');
+  showStatus('Uploading and processing…', 'info');
+
+  const fd = new FormData();
+  fd.append('file',           selectedFile);
+  fd.append('sensitivity',    senSlider.value);
+  fd.append('kernel',         kernSlider.value);
+  fd.append('illum_method',   document.getElementById('illum-method').value);
+  fd.append('alpha_method',   document.getElementById('alpha-method').value);
+  fd.append('no_perspective', document.getElementById('no-perspective').checked ? '1' : '0');
+
+  let resp, data;
+  try {
+    resp = await fetch('/api/process', { method: 'POST', body: fd });
+    data = await resp.json();
+  } catch (err) {
+    showStatus('Network error: ' + err.message, 'error');
+    setPhase('empty');
+    return;
+  }
+
+  if (!resp.ok || data.status === 'failed') {
+    showStatus('Processing failed: ' + (data.error || 'unknown error'), 'error');
+    setPhase('empty');
+    return;
+  }
+
+  currentJobId = data.job_id;
+  renderTimings(data.timings, data.elapsed);
+
+  // Fetch preview images
+  spinnerLabel.textContent = 'Loading preview…';
+  try {
+    const rr = await fetch(`/api/jobs/${currentJobId}/result`);
+    const rd = await rr.json();
+    showPreview(rd, data);
+  } catch (err) {
+    showStatus('Preview failed: ' + err.message, 'error');
+    setPhase('empty');
+    return;
+  }
+
+  // Wire download links
+  const base = `/api/download/${currentJobId}`;
+  document.getElementById('dl-png').href = base + '/png';
+  document.getElementById('dl-psd').href = base + '/psd';
+  document.getElementById('dl-ora').href = base + '/ora';
+
+  showStatus(
+    `Done in ${data.elapsed}s · ${data.output_size ? data.output_size[1]+'×'+data.output_size[0]+' px' : ''}`,
+    'success'
+  );
+  setPhase('result');
+});
+
+/* ── Preview & split slider ───────────────────────────────────────────── */
+function showPreview(rd, jobData) {
+  imgBefore.src = rd.source_b64;
+  imgAfter.src  = rd.output_b64;
+
+  // Set aspect ratio from actual image dimensions
+  splitView.querySelector('.split-sizer').style.paddingTop =
+    (rd.height / rd.width * 100).toFixed(2) + '%';
+
+  setSplitPos(50);
+
+  // Meta row
+  if (jobData.output_size) {
+    document.getElementById('meta-size').textContent =
+      jobData.output_size[1] + '×' + jobData.output_size[0];
+  }
+  if (jobData.dpi) {
+    document.getElementById('meta-dpi').textContent =
+      Math.round(jobData.dpi[0]) + ' × ' + Math.round(jobData.dpi[1]);
+  }
+  document.getElementById('meta-persp').textContent =
+    jobData.perspective_corrected ? '✓' : '—';
+  document.getElementById('meta-time').textContent =
+    jobData.elapsed + 's';
+  metaRow.style.display = 'flex';
+}
+
+function setSplitPos(pct) {
+  pct = Math.max(2, Math.min(98, pct));
+  imgAfter.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  splitDiv.style.left    = pct + '%';
+  splitHandle.style.left = pct + '%';
+}
+
+function getEventX(e) {
+  return e.touches ? e.touches[0].clientX : e.clientX;
+}
+
+splitView.addEventListener('mousedown',  e => { splitDragging = true; updateSplit(e); });
+splitView.addEventListener('touchstart', e => { splitDragging = true; updateSplit(e); }, { passive: true });
+window.addEventListener('mousemove',  e => { if (splitDragging) updateSplit(e); });
+window.addEventListener('touchmove',  e => { if (splitDragging) updateSplit(e); }, { passive: true });
+window.addEventListener('mouseup',    () => splitDragging = false);
+window.addEventListener('touchend',   () => splitDragging = false);
+
+function updateSplit(e) {
+  const rect = splitView.getBoundingClientRect();
+  const pct  = ((getEventX(e) - rect.left) / rect.width) * 100;
+  setSplitPos(pct);
+}
+
+/* ── Timings ──────────────────────────────────────────────────────────── */
+function renderTimings(timings, total) {
+  if (!timings || !Object.keys(timings).length) return;
+  timingsList.innerHTML = '';
+  for (const [stage, secs] of Object.entries(timings)) {
+    const row = document.createElement('div');
+    row.className = 'timing-row';
+    row.innerHTML = `<span class="t-name">${stage}</span><span>${secs}s</span>`;
+    timingsList.appendChild(row);
+  }
+  const tot = document.createElement('div');
+  tot.className = 'timing-row timing-total';
+  tot.innerHTML = `<span class="t-name">total</span><span>${total}s</span>`;
+  timingsList.appendChild(tot);
+  timingsBox.style.display = 'block';
+}
+
+/* ── Phase transitions ────────────────────────────────────────────────── */
+function setPhase(phase) {
+  emptyState.style.display  = phase === 'empty'      ? 'block'        : 'none';
+  spinner.style.display     = phase === 'processing'  ? 'flex'         : 'none';
+  splitCont.style.display   = phase === 'result'      ? 'flex'         : 'none';
+  downloads.style.display   = phase === 'result'      ? 'flex'         : 'none';
+  processBtn.disabled       = phase === 'processing';
+  if (phase === 'processing') spinnerLabel.textContent = 'Processing…';
+}
+
+/* ── Status helpers ───────────────────────────────────────────────────── */
+function showStatus(msg, type = 'info') {
+  statusBox.textContent     = msg;
+  statusBox.className       = type;
+  statusBox.style.display   = 'block';
+}
+function hideStatus() {
+  statusBox.style.display = 'none';
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────── */
+resetBtn.addEventListener('click', async () => {
+  if (currentJobId) {
+    try { await fetch(`/api/jobs/${currentJobId}`, { method: 'DELETE' }); } catch (_) {}
+    currentJobId = null;
+  }
+  selectedFile = null;
+  fileInput.value = '';
+  processBtn.disabled = true;
+  dropZone.querySelector('.drop-main').textContent = 'Drop image here';
+  dropZone.querySelector('.drop-sub').textContent  = 'JPEG or PNG · max 50 MB';
+  timingsBox.style.display = 'none';
+  metaRow.style.display    = 'none';
+  hideStatus();
+  setPhase('empty');
+});
+</script>
+
+</body>
+</html>
