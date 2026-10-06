@@ -287,3 +287,67 @@ The reusable entry point is `pipeline.run_pipeline(source_path, ...)`. It
 returns a `PipelineResult` containing the transparent RGBA image, alpha mask,
 corrected source image, and processing metadata. Export helpers are available
 from `pipeline.export`.
+
+### Optional geometric transform (rotate + crop)
+
+`run_pipeline` accepts a keyword-only `transform` dict that reframes the
+**original** image *before* the extraction pipeline runs. This is a purely
+geometric operation on the user's own pixels — no generative changes. The
+original file on disk is never modified; the transform is applied to an
+in-memory copy.
+
+```python
+from pipeline import run_pipeline
+
+result = run_pipeline(
+    "sketch.jpg",
+    transform={
+        "rotate": 12.5,                 # degrees, clockwise (optional, default 0)
+        "crop": {                       # optional; omit = no crop
+            "left": 0.10,               # fractions (0..1) of the ROTATED image
+            "top": 0.05,
+            "width": 0.80,
+            "height": 0.70,
+        },
+    },
+)
+```
+
+Semantics:
+
+- `rotate` is in **degrees, clockwise**. Rotating a non-square image by a
+  non-multiple of 90° enlarges the canvas; the exposed corners are filled with
+  **white** (paper) so illumination normalisation still behaves.
+- `crop` is **normalised 0..1** and is applied **after** rotation, relative to
+  the rotated image's dimensions. Values are clamped to the image bounds.
+- The transform is a no-op when `rotate` is 0/absent and `crop` is absent.
+- Perspective correction (when left on) runs *after* the transform, so manual
+  framing comes first and automatic deskew then operates on the reframed image.
+
+Through the camelCase options dict used by `process_to_files`, pass the same
+structure under the `transform` key:
+
+```jsonc
+{ "sensitivity": 0.85, "transform": { "rotate": 12.5, "crop": { ... } } }
+```
+
+The result's `metadata` records `transform_applied` (bool), `transform_rotate`
+(effective clockwise degrees), and `transform_crop` (effective normalized crop
+or `None`).
+
+---
+
+## Changelog
+
+### 0.2.0
+
+- Add optional geometric `transform` (rotate + crop) applied to the original
+  image before extraction. Available as the keyword-only `transform` argument
+  to `run_pipeline` and via the camelCase `transform` option key. See
+  "Optional geometric transform" above.
+
+### 0.1.0
+
+- Initial pipeline: decode, orientation, page detection, deskew, illumination
+  normalisation, alpha extraction, colour recovery, RGBA reconstruction, and
+  PNG/PSD/ORA export.
