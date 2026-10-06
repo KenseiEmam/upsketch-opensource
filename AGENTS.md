@@ -31,9 +31,6 @@ Stage order (each is its own module):
 
 1. `decode.py` — load JPEG/PNG, apply EXIF orientation, return float32 RGB
 2. `orient.py` — orientation normalisation (currently a pass-through hook)
-   - `transform.py` — **optional** manual geometric reframing (rotate + crop),
-     applied right after orientation and before page detection. No-op unless a
-     `transform` dict is passed.
 3. `detect_page.py` — Canny + contour paper-quad detection
 4. `deskew.py` — perspective warp (homography)
 5. `normalize_illumination.py` — background estimation + divide
@@ -69,7 +66,6 @@ let the pipeline own interpretation — do not reshape values here:
 | `perspective`         | `perspective` (bool)    |
 | `illuminationMethod`  | `illumination_method`   |
 | `alphaMethod`         | `alpha_method`          |
-| `transform`           | `transform` (dict, pass-through) |
 
 New knobs should be keyword-only on `run_pipeline` so existing callers stay
 unaffected, and added to `pipeline_kwargs` with an `is not None` guard so
@@ -89,7 +85,7 @@ pip install -e ".[dev]"   # runtime + pytest/pytest-cov
 
 ```bash
 pytest                    # full suite
-pytest tests/test_pipeline_stages.py::TestTransform   # one class
+pytest tests/test_pipeline_stages.py::TestExtractAlpha   # one class
 ```
 
 - Tests use synthetic in-memory images (`tests/conftest.py`); no real

@@ -15,7 +15,6 @@ import numpy as np
 
 from .decode import decode_image
 from .orient import normalize_orientation
-from .transform import apply_transform
 from .detect_page import detect_page_quad
 from .deskew import correct_perspective
 from .normalize_illumination import normalize_illumination
@@ -39,9 +38,6 @@ class PipelineResult:
     #   output_size: (h, w)
     #   dpi: (x, y)
     #   perspective_corrected: bool
-    #   transform_applied: bool
-    #   transform_rotate: float   — effective clockwise degrees (0 if none)
-    #   transform_crop: dict|None — effective normalized crop (None if none)
     #   sensitivity: float
     #   timings: dict[stage_name, seconds]
 
@@ -54,7 +50,6 @@ def run_pipeline(
     perspective: bool = True,
     illumination_method: str = "morphological",
     alpha_method: str = "soft_threshold",
-    transform: dict | None = None,
 ) -> PipelineResult:
     """
     Run the full extraction pipeline on a single image file.
@@ -79,14 +74,6 @@ def run_pipeline(
     alpha_method:
         One of 'soft_threshold', 'bilateral', 'dog', 'clahe_inverted'.
         See extract_alpha_mask.
-    transform:
-        Optional geometric reframing applied to the ORIGINAL (oriented) image
-        before any detection/deskew runs. A dict of the form
-        ``{"rotate": <deg clockwise>, "crop": {"left","top","width","height"}}``
-        where crop values are fractions (0..1) of the ORIGINAL image and are
-        applied BEFORE the rotation (the rotation then tilts the cropped
-        rectangle, filling exposed corners white). See
-        pipeline.transform.apply_transform. A no-op when absent/empty.
 
     Returns
     -------
@@ -106,23 +93,6 @@ def run_pipeline(
 
     # Stage 2 — orientation
     oriented = _time("orient", normalize_orientation, raw)
-
-    # Stage 2b — optional manual geometric transform (rotate + crop).
-    # Earliest step that can change pixels: applied to the ORIGINAL (oriented)
-    # image before automatic page detection / deskew, so manual framing comes
-    # first and automatic deskew then operates on the reframed image.
-    # apply_transform returns the input unchanged on a no-op, so identity of
-    # the returned array tells us whether anything was actually applied.
-    before_transform = oriented
-    oriented = _time("transform", apply_transform, oriented, transform)
-    transform_applied = oriented is not before_transform
-    effective_rotate = (
-        float((transform or {}).get("rotate") or 0.0) if transform_applied else 0.0
-    )
-    effective_crop = (transform or {}).get("crop") if transform_applied else None
-
-    # The "before" preview must reflect what was actually processed, so it is
-    # computed from the (possibly) transformed image.
     original_rgb = (oriented * 255).clip(0, 255).astype(np.uint8)
 
     # Stages 3 & 4 — page detection + perspective correction (optional)
@@ -167,9 +137,6 @@ def run_pipeline(
         "dpi": dpi,
         "perspective_requested": perspective,
         "perspective_corrected": perspective_corrected,
-        "transform_applied": transform_applied,
-        "transform_rotate": effective_rotate,
-        "transform_crop": effective_crop,
         "sensitivity": sensitivity,
         "illumination_kernel": illumination_kernel,
         "illumination_method": illumination_method,

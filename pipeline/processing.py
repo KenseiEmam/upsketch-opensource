@@ -37,10 +37,6 @@ def pipeline_kwargs(options: dict[str, Any] | None) -> dict[str, Any]:
         kwargs["illumination_method"] = str(options["illuminationMethod"])
     if options.get("alphaMethod") is not None:
         kwargs["alpha_method"] = str(options["alphaMethod"])
-    # Passed through as a dict; run_pipeline / apply_transform own the
-    # interpretation (rotate degrees + normalized crop). Do not reshape it here.
-    if options.get("transform") is not None:
-        kwargs["transform"] = options["transform"]
     return kwargs
 
 
