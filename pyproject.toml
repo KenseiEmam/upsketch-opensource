@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sketchlift-pipeline"
-version = "0.2.0"
+version = "0.2.1"
 description = "SketchLift image-processing pipeline and local UI"
 requires-python = ">=3.11"
 dependencies = [

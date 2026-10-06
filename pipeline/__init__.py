@@ -83,7 +83,9 @@ def run_pipeline(
         Optional geometric reframing applied to the ORIGINAL (oriented) image
         before any detection/deskew runs. A dict of the form
         ``{"rotate": <deg clockwise>, "crop": {"left","top","width","height"}}``
-        where crop values are fractions (0..1) of the rotated image. See
+        where crop values are fractions (0..1) of the ORIGINAL image and are
+        applied BEFORE the rotation (the rotation then tilts the cropped
+        rectangle, filling exposed corners white). See
         pipeline.transform.apply_transform. A no-op when absent/empty.
 
     Returns

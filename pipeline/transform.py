@@ -7,11 +7,18 @@ page detection / deskew. This is purely geometric: it rotates and crops the
 user's existing pixels, never synthesising new content.
 
 Semantics (matches the caller contract):
-    rotate — degrees, clockwise. Rotating a non-square image by a non-multiple
-             of 90 enlarges the canvas; exposed corners are filled with WHITE
-             (paper) so illumination normalisation still behaves.
-    crop   — normalised fractions (0..1) of the ROTATED image, applied after
-             rotation. Clamped defensively to the image bounds.
+    crop   — normalised fractions (0..1) of the ORIGINAL (oriented) image,
+             applied FIRST (axis-aligned, in the original frame). Clamped
+             defensively to the image bounds.
+    rotate — degrees, clockwise. Applied AFTER the crop, so the rotation tilts
+             the already-cropped rectangle. Rotating a non-square rectangle by
+             a non-multiple of 90 enlarges the canvas; exposed corners are
+             filled with WHITE (paper) so illumination normalisation still
+             behaves.
+
+This order matches a cropper UI (e.g. vue-advanced-cropper) where the crop box
+is reported relative to the original, un-rotated image and the image rotates
+beneath a fixed crop frame.
 
 The transform is a no-op when `rotate` is 0/absent and `crop` is absent.
 
@@ -30,12 +37,14 @@ _WHITE = 1.0
 
 
 def apply_transform(image: np.ndarray, transform: dict | None) -> np.ndarray:
-    """Rotate (deg, clockwise, white fill) then crop (normalized 0..1).
+    """Crop (normalized 0..1 of the ORIGINAL image) then rotate (deg,
+    clockwise, white fill).
 
     `image` is the decoded array in the same form the pipeline's first
     post-decode stage expects (float32 RGB, (H, W, 3), values in [0, 1]).
-    Returns a new array; never mutates input. No-op (returns image unchanged)
-    when transform is falsy / empty.
+    The crop fractions are relative to this original (oriented) frame and are
+    applied BEFORE the rotation. Returns a new array; never mutates input.
+    No-op (returns image unchanged) when transform is falsy / empty.
     """
     if not transform:
         return image
@@ -49,11 +58,14 @@ def apply_transform(image: np.ndarray, transform: dict | None) -> np.ndarray:
 
     result = image
 
-    if rotate != 0.0:
-        result = _rotate_expand_white(result, rotate)
-
+    # Crop first, in the original (un-rotated) frame, then rotate the
+    # already-cropped rectangle. This matches a cropper UI where the crop box
+    # is reported in original-image space and the image tilts beneath it.
     if crop:
         result = _crop_normalized(result, crop)
+
+    if rotate != 0.0:
+        result = _rotate_expand_white(result, rotate)
 
     return result
 

@@ -107,18 +107,54 @@ class TestTransform:
         )
         assert result.shape[0] >= 1 and result.shape[1] >= 1
 
-    def test_rotate_then_crop_order(self):
+    def test_crop_then_rotate_order(self):
         from pipeline.transform import apply_transform
-        img = self._make_image(100, 150)
-        # Rotate 90 (-> 150x100) then full crop keeps the rotated dimensions.
+        img = self._make_image(100, 200)  # H=100, W=200 (landscape)
+        # Crop in the ORIGINAL frame first: width=round(0.8*200)=160,
+        # height=round(0.7*100)=70 -> a (70, 160) H x W rectangle.
+        # Then rotate 90 degrees, which swaps the cropped rectangle's dims
+        # -> (160, 70).
         result = apply_transform(
             img,
             {
+                "crop": {"left": 0.10, "top": 0.05, "width": 0.80, "height": 0.70},
                 "rotate": 90,
-                "crop": {"left": 0.0, "top": 0.0, "width": 1.0, "height": 1.0},
             },
         )
-        assert result.shape[:2] == (150, 100)
+        assert result.shape[:2] == (160, 70)
+
+    def test_crop_then_rotate_identity_rotation_is_crop_only(self):
+        from pipeline.transform import apply_transform
+        img = self._make_image(100, 200)
+        # With rotate=0, a crop alone must match the plain-crop dimensions.
+        result = apply_transform(
+            img,
+            {
+                "crop": {"left": 0.10, "top": 0.05, "width": 0.80, "height": 0.70},
+                "rotate": 0,
+            },
+        )
+        assert result.shape[:2] == (70, 160)
+
+    def test_45_degree_rotation_of_crop_fills_corners_and_expands(self):
+        from pipeline.transform import apply_transform
+        img = self._make_image(100, 200)
+        # Crop to a 70 x 160 (H x W) rectangle, then rotate 45 degrees.
+        result = apply_transform(
+            img,
+            {
+                "crop": {"left": 0.10, "top": 0.05, "width": 0.80, "height": 0.70},
+                "rotate": 45,
+            },
+        )
+        ch, cw = 70, 160  # cropped rectangle dimensions
+        # A 45-degree rotation expands the canvas to the rotated bounding box.
+        cos = sin = np.cos(np.radians(45))
+        exp_w = int(np.floor(ch * sin + cw * cos + 0.5 + 1e-6))
+        exp_h = int(np.floor(ch * cos + cw * sin + 0.5 + 1e-6))
+        assert result.shape[:2] == (exp_h, exp_w)
+        # The exposed corner (outside the tilted rectangle) must be white.
+        assert result[0, 0].mean() == pytest.approx(1.0, abs=1e-3)
 
 
 # ---------------------------------------------------------------------------

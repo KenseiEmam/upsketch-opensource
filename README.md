@@ -304,7 +304,7 @@ result = run_pipeline(
     transform={
         "rotate": 12.5,                 # degrees, clockwise (optional, default 0)
         "crop": {                       # optional; omit = no crop
-            "left": 0.10,               # fractions (0..1) of the ROTATED image
+            "left": 0.10,               # fractions (0..1) of the ORIGINAL image
             "top": 0.05,
             "width": 0.80,
             "height": 0.70,
@@ -315,11 +315,14 @@ result = run_pipeline(
 
 Semantics:
 
-- `rotate` is in **degrees, clockwise**. Rotating a non-square image by a
-  non-multiple of 90° enlarges the canvas; the exposed corners are filled with
-  **white** (paper) so illumination normalisation still behaves.
-- `crop` is **normalised 0..1** and is applied **after** rotation, relative to
-  the rotated image's dimensions. Values are clamped to the image bounds.
+- `crop` is **normalised 0..1** relative to the **original** (oriented) image
+  and is applied **first**, in the original (un-rotated) frame. Values are
+  clamped to the image bounds. This matches a cropper UI (e.g.
+  vue-advanced-cropper) that reports the crop box in original-image space.
+- `rotate` is in **degrees, clockwise** and is applied **after** the crop, so
+  the rotation tilts the already-cropped rectangle. Rotating a non-square
+  rectangle by a non-multiple of 90° enlarges the canvas; the exposed corners
+  are filled with **white** (paper) so illumination normalisation still behaves.
 - The transform is a no-op when `rotate` is 0/absent and `crop` is absent.
 - Perspective correction (when left on) runs *after* the transform, so manual
   framing comes first and automatic deskew then operates on the reframed image.
@@ -338,6 +341,14 @@ or `None`).
 ---
 
 ## Changelog
+
+### 0.2.1
+
+- **Transform semantics change:** `crop` is now interpreted in the **original**
+  (un-rotated) image frame and is applied **before** the rotation (previously it
+  was applied after rotation, relative to the rotated canvas). This aligns the
+  pipeline with cropper UIs that report the crop box in original-image space, so
+  the cropped region lands correctly at any rotation angle.
 
 ### 0.2.0
 
